@@ -1,5 +1,6 @@
 import cv2
 from pathlib import Path
+from cv2 import imshow
 import numpy as np
 
 version = "22w14a"
@@ -39,7 +40,7 @@ def transify(image_path:Path):
     image_alpha_no_holes = cv2.bitwise_not(floodfill_unpad)
 
     SCALE = 10
-
+    # Enbiggen image for corner processing
     big_image = cv2.resize(image_alpha_no_holes, image_size*SCALE, interpolation=cv2.INTER_NEAREST)
     padded_big_im = np.pad(big_image, ((1,1),(1,1)), "constant", constant_values=0)
 
@@ -59,24 +60,59 @@ def transify(image_path:Path):
     res = np.hstack((centroids,corners))
     res = np.int0(res)
     corner_result[res[:,1],res[:,0]]=255
-    corner_result = morph(corner_result, cv2.dilate, kernel_size=2, iterations=1)
+    corner_result = morph(corner_result, cv2.dilate, kernel_size=3, iterations=1)
 
+    # Corners that intersect with the image
     good_corners = cv2.bitwise_and(corner_result, padded_big_im)
     good_corners = unpad(good_corners)
 
+    # Ensmallen image
     quint_image = cv2.resize(image_alpha_no_holes, image_size*5, interpolation=cv2.INTER_NEAREST)
 
     color_q_image = cv2.cvtColor(quint_image, cv2.COLOR_GRAY2BGR)
 
+    # Put corners on small image
     corner_coords = np.array(np.where(good_corners == 255))
     corner_coords = corner_coords//2
 
-    print(corner_coords)
+    # Get actual corners
+    corner_co_im = np.zeros_like(quint_image)
+    corner_co_im[corner_coords[0],corner_coords[1]] = 255
+    good_corner_co = np.transpose(np.where(corner_co_im == 255))
 
-    color_q_image[corner_coords[0], corner_coords[1]] = (255,0,0)
+    # Make the corners EMIT
+    corner_crosses = np.zeros_like(quint_image)
+    for co in good_corner_co:
+        cross = np.zeros_like(quint_image)
+        cross[co[0]] = 255
+        cross[::,co[1]] = 255
+        
+        mask = cv2.bitwise_not(cv2.bitwise_and(cross, quint_image))
+        mask = np.pad(mask, ((1,1),(1,1)), "constant", constant_values=255)
+        target_cross = np.zeros_like(quint_image)
+        cv2.floodFill(target_cross, mask, (co[1],co[0]), 255)
+        
+        corner_crosses = cv2.bitwise_or(corner_crosses, target_cross)
 
-    dst = morph(dst, cv2.dilate, 1, 1)
-    cv2.imshow(WINNAME, color_q_image)
+    # Get rectangles in image form
+    invert_quint_image = cv2.bitwise_not(quint_image)
+    rectangles_im = cv2.bitwise_not(cv2.bitwise_or(invert_quint_image, corner_crosses))
+
+    # Find contours
+    contours, _ = cv2.findContours(rectangles_im, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    # Get rectangles
+    rectangles = []
+    for contour in contours:
+        x,y,w,h = cv2.boundingRect(contour)
+        rectangles.append((x,y,w,h))
+
+    # Draw rectangles
+    drawn_rectangles = np.zeros_like(quint_image)
+    for rect in rectangles:
+        x,y,w,h = rect
+        cv2.rectangle(drawn_rectangles, (x,y), (x+w,y+h), (255,255,255), -1)
+    cv2.imshow(WINNAME, drawn_rectangles)
     cv2.waitKey(0)
 
 
