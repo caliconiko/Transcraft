@@ -1,13 +1,19 @@
 import cv2
 from pathlib import Path
-from cv2 import imshow
 import numpy as np
+from numpy.random import random 
+from distutils.dir_util import copy_tree
 
 version = "22w14a"
 
 BLUE = "5bcffa"
 PINK = "f5abb9"
 WHITE = "ffffff"
+
+here_dir = Path(__file__).resolve().parent
+
+hor = cv2.imread(str(here_dir / "hor.png"))
+ver = cv2.imread(str(here_dir / "ver.png"))
 
 def unpad(image:np.ndarray, amount = 1):
     return image[amount:-amount,amount:-amount]
@@ -69,7 +75,7 @@ def transify(image_path:Path):
     # Ensmallen image
     quint_image = cv2.resize(image_alpha_no_holes, image_size*5, interpolation=cv2.INTER_NEAREST)
 
-    color_q_image = cv2.cvtColor(quint_image, cv2.COLOR_GRAY2BGR)
+    color_q_image = cv2.cvtColor(quint_image, cv2.COLOR_GRAY2RGB)
 
     # Put corners on small image
     corner_coords = np.array(np.where(good_corners == 255))
@@ -108,10 +114,16 @@ def transify(image_path:Path):
         rectangles.append((x,y,w,h))
 
     # Draw rectangles
-    drawn_rectangles = np.zeros_like(quint_image)
+    drawn_rectangles = np.zeros_like(color_q_image)
     for rect in rectangles:
         x,y,w,h = rect
-        cv2.rectangle(drawn_rectangles, (x,y), (x+w,y+h), (255,255,255), -1)
+
+        unscaled_im = np.copy(hor) if w>=h else np.copy(ver)
+
+        scaled_im = cv2.resize(unscaled_im, (w+2,h+2), interpolation=cv2.INTER_NEAREST)
+
+        drawn_rectangles[y-1:y-1+scaled_im.shape[0], x-1:x-1+scaled_im.shape[1]] = scaled_im
+        # cv2.rectangle(drawn_rectangles, (x,y), (x+w,y+h), random()*128+128, -1)
     cv2.imshow(WINNAME, drawn_rectangles)
     cv2.waitKey(0)
 
@@ -119,13 +131,24 @@ def transify(image_path:Path):
 textures = [
     "entity/bee/bee.png", 
     "entity/allay/allay.png", 
+    # "entity/ghast/ghast.png", 
     # "misc/spyglass_scope.png",
 ]
 
-here_dir = Path(__file__).resolve().parent
-
 TEXTURE_DIR = Path("assets/minecraft/textures")
+
+version_dir = Path(version)
+
 INPUT_VERSION_DIR = Path("input-versions")
+OUTPUT_VERSION_DIR = Path("output-versions")
+
+out_version_dir = here_dir/OUTPUT_VERSION_DIR/version_dir
+in_version_dir = here_dir/INPUT_VERSION_DIR/version_dir
+print(out_version_dir)
+if out_version_dir.is_dir():
+    print("it is a dir")
+else:
+    copy_tree(str(in_version_dir), str(out_version_dir))
 
 for texture in textures:
     print(texture)
