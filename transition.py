@@ -75,8 +75,6 @@ def transify(image_path:Path):
     # Ensmallen image
     quint_image = cv2.resize(image_alpha_no_holes, image_size*5, interpolation=cv2.INTER_NEAREST)
 
-    color_q_image = cv2.cvtColor(quint_image, cv2.COLOR_GRAY2RGB)
-
     # Put corners on small image
     corner_coords = np.array(np.where(good_corners == 255))
     corner_coords = corner_coords//2
@@ -114,7 +112,9 @@ def transify(image_path:Path):
         rectangles.append((x,y,w,h))
 
     # Draw rectangles
-    drawn_rectangles = np.zeros_like(color_q_image)
+    rgb_q_image = cv2.cvtColor(quint_image, cv2.COLOR_GRAY2RGB)
+
+    drawn_rectangles = np.zeros_like(rgb_q_image)
     for rect in rectangles:
         x,y,w,h = rect
 
@@ -124,8 +124,15 @@ def transify(image_path:Path):
 
         drawn_rectangles[y-1:y-1+scaled_im.shape[0], x-1:x-1+scaled_im.shape[1]] = scaled_im
         # cv2.rectangle(drawn_rectangles, (x,y), (x+w,y+h), random()*128+128, -1)
-    cv2.imshow(WINNAME, drawn_rectangles)
-    cv2.waitKey(0)
+
+    # Mix with alpha
+    rgba_q_image = cv2.resize(image_file, image_size*5, interpolation=cv2.INTER_NEAREST)
+    drawn_rectangles = cv2.cvtColor(drawn_rectangles, cv2.COLOR_RGB2RGBA)
+    rgba_q_image = cv2.cvtColor(rgba_q_image, cv2.COLOR_RGB2RGBA)
+
+    drawn_rectangles[:,:,-1] = rgba_q_image[:,:,-1]
+
+    return drawn_rectangles
 
 
 textures = [
@@ -153,4 +160,7 @@ else:
 for texture in textures:
     print(texture)
     texture_path = here_dir.joinpath(INPUT_VERSION_DIR, version, TEXTURE_DIR, texture)
-    transify(texture_path)
+    thing = transify(texture_path)
+    out_texture_path = here_dir.joinpath(OUTPUT_VERSION_DIR, version, TEXTURE_DIR, texture)
+    print(out_texture_path)
+    # cv2.imwrite(str(out_texture_path), thing)
