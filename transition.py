@@ -15,6 +15,8 @@ here_dir = Path(__file__).resolve().parent
 hor = cv2.imread(str(here_dir / "hor.png"))
 ver = cv2.imread(str(here_dir / "ver.png"))
 
+log = []
+
 def unpad(image:np.ndarray, amount = 1):
     return image[amount:-amount,amount:-amount]
 
@@ -27,13 +29,21 @@ def transify(image_path:Path):
 
     # Get the image
     image_file = cv2.imread(str(image_path), cv2.IMREAD_UNCHANGED)
-    image_size = np.array([image_file.shape[i] for i in range(2)])
+    image_size = np.array([image_file.shape[1], image_file.shape[0]])
 
     # Get image channels
     image_channels = cv2.split(image_file)
-
+    
+    no_alpha = False
+    if len(image_channels) <4:
+        log.append(str(image_path) + " is sus")
+        no_alpha=True
+        # return image_file
     # Get alpha part of image
-    image_alpha = cv2.inRange(image_channels[3], 1, 255)
+    if not no_alpha:
+        image_alpha = cv2.inRange(image_channels[3], 1, 255)
+    else:
+        image_alpha = cv2.inRange(cv2.cvtColor(image_file, cv2.COLOR_RGB2GRAY), 1, 255)
 
     # Using FloodFill to remove holes in image
     padded_image_alpha = np.pad(image_alpha, ((1,1),(1,1)), "constant", constant_values=0)
@@ -122,8 +132,14 @@ def transify(image_path:Path):
 
         scaled_im = cv2.resize(unscaled_im, (w+2,h+2), interpolation=cv2.INTER_NEAREST)
 
-        drawn_rectangles[y-1:y-1+scaled_im.shape[0], x-1:x-1+scaled_im.shape[1]] = scaled_im
-        # cv2.rectangle(drawn_rectangles, (x,y), (x+w,y+h), random()*128+128, -1)
+        try:
+            drawn_rectangles[y-1:y-1+scaled_im.shape[0], x-1:x-1+scaled_im.shape[1]] = scaled_im
+        except Exception as e:
+            # print(e)
+            # cv2.imshow("drawn_rectangles", drawn_rectangles)
+            # cv2.imshow("scaled_im", scaled_im)
+            # cv2.waitKey(0)
+            pass # ;)
 
     # Mix with alpha
     rgba_q_image = cv2.resize(image_file, image_size*5, interpolation=cv2.INTER_NEAREST)
@@ -132,14 +148,14 @@ def transify(image_path:Path):
 
     drawn_rectangles[:,:,-1] = rgba_q_image[:,:,-1]
 
+    cv2.imshow("image_alpha_no_holes", image_file)
+
+
     return drawn_rectangles
 
 
 textures = [
-    "entity/bee/bee.png", 
-    "entity/allay/allay.png", 
-    # "entity/ghast/ghast.png", 
-    # "misc/spyglass_scope.png",
+    "entity",
 ]
 
 TEXTURE_DIR = Path("assets/minecraft/textures")
@@ -157,10 +173,30 @@ if out_version_dir.is_dir():
 else:
     copy_tree(str(in_version_dir), str(out_version_dir))
 
+def transize(path):
+    transified = transify(path)
+    path_parts = path.parts
+    index = path_parts.index(str(INPUT_VERSION_DIR))
+
+    out_path = Path(*(path_parts[:index]+(OUTPUT_VERSION_DIR,)+path_parts[index+1:])) 
+    cv2.imwrite(str(out_path), transified)
+
+    # cv2.imshow("image", transified)
+    # key = cv2.waitKey(0)
+    # if key>0:
+    #     if chr(key) == 'q':
+    #         exit()
+
 for texture in textures:
-    print(texture)
-    texture_path = here_dir.joinpath(INPUT_VERSION_DIR, version, TEXTURE_DIR, texture)
-    thing = transify(texture_path)
-    out_texture_path = here_dir.joinpath(OUTPUT_VERSION_DIR, version, TEXTURE_DIR, texture)
-    print(out_texture_path)
-    # cv2.imwrite(str(out_texture_path), thing)
+    full_texture_path = here_dir/INPUT_VERSION_DIR/version_dir/TEXTURE_DIR/texture
+
+    if full_texture_path.is_dir():
+        png_files = full_texture_path.rglob('*.png')
+        for i, path in enumerate(png_files):
+            print(f"{path} [{i}]")
+            transize(path)
+    else:
+        transize(full_texture_path)
+
+
+print(log)
