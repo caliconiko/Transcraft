@@ -3,6 +3,7 @@ from pathlib import Path
 import numpy as np
 from numpy.random import random 
 from distutils.dir_util import copy_tree
+from time import time
 
 version = "22w14a"
 
@@ -16,6 +17,7 @@ hor = cv2.imread(str(here_dir / "hor.png"))
 ver = cv2.imread(str(here_dir / "ver.png"))
 
 log = []
+total = 0
 
 def unpad(image:np.ndarray, amount = 1):
     return image[amount:-amount,amount:-amount]
@@ -193,7 +195,7 @@ def transize(path):
 
     out_path = Path(*(path_parts[:index]+(OUTPUT_VERSION_DIR,)+path_parts[index+1:])) 
     cv2.imwrite(str(out_path), transified)
-
+    total+=1
     print(out_path)
 
     # cv2.imshow("image", transified)
@@ -203,6 +205,8 @@ def transize(path):
     #         exit()
 
 FULL_TEXTURE_DIR = here_dir/INPUT_VERSION_DIR/version_dir/TEXTURE_DIR
+
+start_time = time()
 
 for texture in textures:
     full_texture_path = FULL_TEXTURE_DIR/texture
@@ -225,5 +229,6 @@ for texture in textures:
     else:
         transize(full_texture_path)
 
-
+print(f"{time()-start_time}")
 print(log)
+print(f"{total=}")
