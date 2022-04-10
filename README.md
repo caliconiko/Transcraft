@@ -10,7 +10,7 @@ idk
 
 ## Where?
 
-...
+[download the zip file here](https://github.com/photon-niko/Transcraft/releases)
 
 ## Documentation
 
