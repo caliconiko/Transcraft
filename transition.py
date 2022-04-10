@@ -189,6 +189,7 @@ else:
     copy_tree(str(in_version_dir), str(out_version_dir))
 
 def transize(path):
+    global total
     transified = transify(path)
     path_parts = path.parts
     index = path_parts.index(str(INPUT_VERSION_DIR))
