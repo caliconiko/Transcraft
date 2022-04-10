@@ -2,7 +2,7 @@
 
 ## What?
 
-Trans resource pack
+Trans minecraft resource pack
 
 ## Why?
 
