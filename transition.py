@@ -158,8 +158,13 @@ textures = [
     "item",
     "map",
     "models",
+    "mob_effect",
     "painting",
     "particle",
+    "environment/moon_phases.png",
+    "environment/rain.png",
+    "environment/snow.png",
+    "environment/sun.png",
 ]
 
 bad_textures = [
