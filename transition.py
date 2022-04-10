@@ -148,14 +148,22 @@ def transify(image_path:Path):
 
     drawn_rectangles[:,:,-1] = rgba_q_image[:,:,-1]
 
-    cv2.imshow("image_alpha_no_holes", image_file)
-
-
     return drawn_rectangles
 
 
 textures = [
+    "block",
     "entity",
+    "gui",
+    "item",
+    "map",
+    "models",
+    "painting",
+    "particle",
+]
+
+bad_textures = [
+    "background",
 ]
 
 TEXTURE_DIR = Path("assets/minecraft/textures")
@@ -181,18 +189,32 @@ def transize(path):
     out_path = Path(*(path_parts[:index]+(OUTPUT_VERSION_DIR,)+path_parts[index+1:])) 
     cv2.imwrite(str(out_path), transified)
 
+    print(out_path)
+
     # cv2.imshow("image", transified)
     # key = cv2.waitKey(0)
     # if key>0:
     #     if chr(key) == 'q':
     #         exit()
 
+FULL_TEXTURE_DIR = here_dir/INPUT_VERSION_DIR/version_dir/TEXTURE_DIR
+
 for texture in textures:
-    full_texture_path = here_dir/INPUT_VERSION_DIR/version_dir/TEXTURE_DIR/texture
+    full_texture_path = FULL_TEXTURE_DIR/texture
 
     if full_texture_path.is_dir():
         png_files = full_texture_path.rglob('*.png')
         for i, path in enumerate(png_files):
+            found_bad_texture = False
+
+            for bad_texture in bad_textures:
+                if path.parent.name == bad_texture:
+                    found_bad_texture = True
+                    break
+            
+            if found_bad_texture:
+                continue
+            
             print(f"{path} [{i}]")
             transize(path)
     else:
