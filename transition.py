@@ -5,7 +5,7 @@ from numpy.random import random
 from distutils.dir_util import copy_tree
 from time import time
 
-version = "22w14a"
+version = "1.19"
 
 BLUE = "5bcffa"
 PINK = "f5abb9"
@@ -167,6 +167,7 @@ textures = [
     "environment/rain.png",
     "environment/snow.png",
     "environment/sun.png",
+    "environment/end_sky.png",
 ]
 
 bad_textures = [
