@@ -57,9 +57,10 @@ def transify(image_path:Path):
     floodfill_unpad = unpad(floodfill_image_alpha)
     image_alpha_no_holes = cv2.bitwise_not(floodfill_unpad)
 
-    SCALE = 10
+    CORNER_PROCESS_SCALE = 10
+    RECT_PROCESS_SCALE = 5
     # Enbiggen image for corner processing
-    big_image = cv2.resize(image_alpha_no_holes, image_size*SCALE, interpolation=cv2.INTER_NEAREST)
+    big_image = cv2.resize(image_alpha_no_holes, image_size*CORNER_PROCESS_SCALE, interpolation=cv2.INTER_NEAREST)
     padded_big_im = np.pad(big_image, ((1,1),(1,1)), "constant", constant_values=0)
 
     corner_result = np.zeros_like(padded_big_im)
@@ -85,34 +86,35 @@ def transify(image_path:Path):
     good_corners = unpad(good_corners)
 
     # Ensmallen image
-    quint_image = cv2.resize(image_alpha_no_holes, image_size*5, interpolation=cv2.INTER_NEAREST)
+    smalled_image = cv2.resize(image_alpha_no_holes, image_size*RECT_PROCESS_SCALE, interpolation=cv2.INTER_NEAREST)
 
     # Put corners on small image
     corner_coords = np.array(np.where(good_corners == 255))
-    corner_coords = corner_coords//2
+    corner_coords = corner_coords//(CORNER_PROCESS_SCALE//RECT_PROCESS_SCALE)
 
     # Get actual corners
-    corner_co_im = np.zeros_like(quint_image)
+    corner_co_im = np.zeros_like(smalled_image)
     corner_co_im[corner_coords[0],corner_coords[1]] = 255
     good_corner_co = np.transpose(np.where(corner_co_im == 255))
 
     # Make the corners EMIT
-    corner_crosses = np.zeros_like(quint_image)
+    corner_crosses = np.zeros_like(smalled_image)
     for co in good_corner_co:
-        cross = np.zeros_like(quint_image)
+        cross = np.zeros_like(smalled_image)
         cross[co[0]] = 255
         cross[::,co[1]] = 255
         
-        mask = cv2.bitwise_not(cv2.bitwise_and(cross, quint_image))
+        mask = cv2.bitwise_not(cv2.bitwise_and(cross, smalled_image))
         mask = np.pad(mask, ((1,1),(1,1)), "constant", constant_values=255)
-        target_cross = np.zeros_like(quint_image)
+        target_cross = np.zeros_like(smalled_image)
         cv2.floodFill(target_cross, mask, (co[1],co[0]), 255)
         
         corner_crosses = cv2.bitwise_or(corner_crosses, target_cross)
 
     # Get rectangles in image form
-    invert_quint_image = cv2.bitwise_not(quint_image)
+    invert_quint_image = cv2.bitwise_not(smalled_image)
     rectangles_im = cv2.bitwise_not(cv2.bitwise_or(invert_quint_image, corner_crosses))
+
 
     # Find contours
     contours, _ = cv2.findContours(rectangles_im, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
@@ -124,12 +126,12 @@ def transify(image_path:Path):
         rectangles.append((x,y,w,h))
 
     # Draw rectangles
-    rgb_q_image = cv2.cvtColor(quint_image, cv2.COLOR_GRAY2RGB)
+    rgb_smol_image = cv2.cvtColor(smalled_image, cv2.COLOR_GRAY2RGB)
 
-    drawn_rectangles = np.zeros_like(rgb_q_image)
+    drawn_rectangles = np.zeros_like(rgb_smol_image)
     for rect in rectangles:
         x,y,w,h = rect
-
+        # think about this print(rect) ^^
         unscaled_im = np.copy(hor) if w>=h else np.copy(ver)
 
         scaled_im = cv2.resize(unscaled_im, (w+2,h+2), interpolation=cv2.INTER_NEAREST)
@@ -142,13 +144,18 @@ def transify(image_path:Path):
             # cv2.imshow("scaled_im", scaled_im)
             # cv2.waitKey(0)
             pass # ;)
+    
+    # cv2.imshow("output", cv2.resize(drawn_rectangles, image_size*RECT_PROCESS_SCALE*4, interpolation=cv2.INTER_NEAREST))
+    # cv2.imshow("rect", cv2.resize(rectangles_im, image_size*RECT_PROCESS_SCALE*4, interpolation=cv2.INTER_NEAREST))
+
+    # cv2.waitKey(0)
 
     # Mix with alpha
-    rgba_q_image = cv2.resize(image_file, image_size*5, interpolation=cv2.INTER_NEAREST)
+    rgba_smol_image = cv2.resize(image_file, image_size*RECT_PROCESS_SCALE, interpolation=cv2.INTER_NEAREST)
     drawn_rectangles = cv2.cvtColor(drawn_rectangles, cv2.COLOR_RGB2RGBA)
-    rgba_q_image = cv2.cvtColor(rgba_q_image, cv2.COLOR_RGB2RGBA)
+    rgba_smol_image = cv2.cvtColor(rgba_smol_image, cv2.COLOR_RGB2RGBA)
 
-    drawn_rectangles[:,:,-1] = rgba_q_image[:,:,-1]
+    drawn_rectangles[:,:,-1] = rgba_smol_image[:,:,-1]
 
     return drawn_rectangles
 
