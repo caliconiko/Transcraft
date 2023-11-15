@@ -15,6 +15,7 @@ here_dir = Path(__file__).resolve().parent
 
 hor = cv2.imread(str(here_dir / "hor.png"))
 ver = cv2.imread(str(here_dir / "ver.png"))
+error = cv2.imread(str(here_dir / "error.png"))
 
 log = []
 total = 0
@@ -131,21 +132,42 @@ def transify(image_path:Path):
     drawn_rectangles = np.zeros_like(rgb_smol_image)
     for rect in rectangles:
         x,y,w,h = rect
-        # think about this print(rect) ^^
-        unscaled_im = np.copy(hor) if w>=h else np.copy(ver)
 
+        # error correction
+        show_debug = False
+        for i, n in enumerate([w, h]):
+            n_mod=(n-RECT_PROCESS_SCALE+2)%RECT_PROCESS_SCALE
+            if  n_mod != 0:
+                correct_n = round((n-RECT_PROCESS_SCALE+2)/RECT_PROCESS_SCALE+1)*RECT_PROCESS_SCALE-2
+                if i == 0:
+                    w=correct_n
+                elif i == 1:
+                    h=correct_n
+
+        for i, n in enumerate([x, y]):
+            n_mod=(n-1)%RECT_PROCESS_SCALE
+            if  n_mod != 0:
+                correct_n = round((n-1)/RECT_PROCESS_SCALE)*RECT_PROCESS_SCALE+1
+                if i == 0:
+                    x=correct_n
+                elif i == 1:
+                    y=correct_n
+
+        unscaled_im = np.copy(hor) if w>=h else np.copy(ver)
         scaled_im = cv2.resize(unscaled_im, (w+2,h+2), interpolation=cv2.INTER_NEAREST)
 
         try:
             drawn_rectangles[y-1:y-1+scaled_im.shape[0], x-1:x-1+scaled_im.shape[1]] = scaled_im
         except Exception as e:
-            # print(e)
-            # cv2.imshow("drawn_rectangles", drawn_rectangles)
-            # cv2.imshow("scaled_im", scaled_im)
-            # cv2.waitKey(0)
+            print(e)
+            show_debug=True
             pass # ;)
+        if show_debug:
+            print(rect)
+            cv2.imshow("output", cv2.resize(drawn_rectangles, image_size*RECT_PROCESS_SCALE*4, interpolation=cv2.INTER_NEAREST))
+            cv2.waitKey(0)
+        show_debug=False
     
-    # cv2.imshow("output", cv2.resize(drawn_rectangles, image_size*RECT_PROCESS_SCALE*4, interpolation=cv2.INTER_NEAREST))
     # cv2.imshow("rect", cv2.resize(rectangles_im, image_size*RECT_PROCESS_SCALE*4, interpolation=cv2.INTER_NEAREST))
 
     # cv2.waitKey(0)
