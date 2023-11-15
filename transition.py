@@ -5,6 +5,7 @@ from distutils.dir_util import copy_tree
 from time import time
 from argparse import ArgumentParser
 import os
+import shutil
 
 parser = ArgumentParser("Transcraft", 
                         description="Transifies minecraft textures",
@@ -29,6 +30,8 @@ here_dir = Path(__file__).resolve().parent
 hor = cv2.imread(str(here_dir / "hor.png"))
 ver = cv2.imread(str(here_dir / "ver.png"))
 error = cv2.imread(str(here_dir / "error.png"))
+clouds = cv2.imread(str(here_dir / "clouds.png"))
+
 
 log = []
 total = 0
@@ -178,7 +181,6 @@ def transify(image_path:Path):
             show_debug=True
             pass # ;)
         if show_debug:
-            print(rect)
             cv2.imshow("output", cv2.resize(drawn_rectangles, image_size*RECT_PROCESS_SCALE*4, interpolation=cv2.INTER_NEAREST))
             cv2.waitKey(0)
         show_debug=False
@@ -243,13 +245,10 @@ def transize(path):
     global total
     transified = transify(path)
     path_parts = path.parts
-    print(path_parts)
     index = path_parts.index(version_dir.parts[0])
     out_path = Path(*((out_version_dir,)+path_parts[index+2:]))
-    print(out_path)
     cv2.imwrite(str(out_path), transified)
     total+=1
-    print(out_path)
 
     # cv2.imshow("image", transified)
     # key = cv2.waitKey(0)
@@ -259,6 +258,7 @@ def transize(path):
 
 FULL_TEXTURE_DIR = in_version_dir/TEXTURE_DIR
 
+shutil.copy(str(here_dir/"clouds.png"), str(out_version_dir/TEXTURE_DIR/"environment/clouds.png"))
 start_time = time()
 
 for texture in textures:
@@ -281,6 +281,7 @@ for texture in textures:
             transize(path)
     else:
         transize(full_texture_path)
+
 
 print(f"{time()-start_time}")
 print(log)
