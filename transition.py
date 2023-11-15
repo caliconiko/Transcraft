@@ -1,11 +1,24 @@
 import cv2
 from pathlib import Path
 import numpy as np
-from numpy.random import random 
 from distutils.dir_util import copy_tree
 from time import time
+from argparse import ArgumentParser
+import os
 
-version = "1.19"
+parser = ArgumentParser("Transcraft", 
+                        description="Transifies minecraft textures",
+                        epilog="Trans rights are human rights")
+
+parser.add_argument("version_path", help="Path to an unzipped minecraft version. Go to .minecraft/versions to find the jar file of a version and unzip that.")
+parser.add_argument("--trans_path", help="Path to output.", default="", required=False)
+args = parser.parse_args()
+version_path=Path(args.version_path)
+if not version_path.exists():
+    print("Path doesn't exist")
+    exit()
+
+version = version_path.parts[-1]
 
 BLUE = "5bcffa"
 PINK = "f5abb9"
@@ -45,8 +58,10 @@ def transify(image_path:Path):
     # Get alpha part of image
     if not no_alpha:
         image_alpha = cv2.inRange(image_channels[3], 1, 255)
-    else:
+    elif len(image_channels)==3:
         image_alpha = cv2.inRange(cv2.cvtColor(image_file, cv2.COLOR_RGB2GRAY), 1, 255)
+    elif len(image_channels)==1:
+        image_alpha = cv2.inRange(image_file, 1, 255)
 
     # Using FloodFill to remove holes in image
     padded_image_alpha = np.pad(image_alpha, ((1,1),(1,1)), "constant", constant_values=0)
@@ -210,21 +225,28 @@ version_dir = Path(version)
 INPUT_VERSION_DIR = Path("input-versions")
 OUTPUT_VERSION_DIR = Path("output-versions")
 
-out_version_dir = here_dir/OUTPUT_VERSION_DIR/version_dir
-in_version_dir = here_dir/INPUT_VERSION_DIR/version_dir
+in_version_dir = version_path
+if args.trans_path == "":
+    out_version_dir = here_dir/OUTPUT_VERSION_DIR/version_dir
+else:
+    out_version_dir = Path(args.trans_path)/OUTPUT_VERSION_DIR/version_dir
 print(out_version_dir)
+
 if out_version_dir.is_dir():
     print("it is a dir")
 else:
-    copy_tree(str(in_version_dir), str(out_version_dir))
+    print("copying tree...")
+    os.makedirs(out_version_dir/"assets")
+    copy_tree(str(in_version_dir/"assets"), str(out_version_dir/"assets"))
 
 def transize(path):
     global total
     transified = transify(path)
     path_parts = path.parts
-    index = path_parts.index(str(INPUT_VERSION_DIR))
-
-    out_path = Path(*(path_parts[:index]+(OUTPUT_VERSION_DIR,)+path_parts[index+1:])) 
+    print(path_parts)
+    index = path_parts.index(version_dir.parts[0])
+    out_path = Path(*((out_version_dir,)+path_parts[index+2:]))
+    print(out_path)
     cv2.imwrite(str(out_path), transified)
     total+=1
     print(out_path)
@@ -235,7 +257,7 @@ def transize(path):
     #     if chr(key) == 'q':
     #         exit()
 
-FULL_TEXTURE_DIR = here_dir/INPUT_VERSION_DIR/version_dir/TEXTURE_DIR
+FULL_TEXTURE_DIR = in_version_dir/TEXTURE_DIR
 
 start_time = time()
 
